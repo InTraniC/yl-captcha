@@ -1,0 +1,6 @@
+.yl-captcha{margin:.75em 0;font-size:.875em;color:#555;display:flex;align-items:center;gap:.5em;min-height:1.5em}
+.yl-captcha::before{content:"";width:.9em;height:.9em;border-radius:50%;border:2px solid #c9d5ea;border-top-color:#1b4587;flex:none;animation:ylc-spin .9s linear infinite}
+.yl-captcha[data-state="ok"]::before{animation:none;border:0;background:#2e7d4f;clip-path:polygon(14% 44%,0 65%,50% 100%,100% 16%,80% 0,43% 62%)}
+.yl-captcha[data-state="error"]::before{animation:none;border-color:#b7791f;border-top-color:#b7791f}
+@keyframes ylc-spin{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){.yl-captcha::before{animation:none}}
