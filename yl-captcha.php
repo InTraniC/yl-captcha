@@ -5,6 +5,7 @@
  * Description:       Self-hosted proof-of-work captcha for comments, registration, login and Contact Form 7. No external service, no cookies, no tracking, GDPR-friendly.
  * Version:           1.0.0
  * Requires at least: 6.0
+ * Tested up to:      7.1
  * Requires PHP:      8.0
  * Author:            Yannic Lange, YL Web Dev
  * Author URI:        https://yl-web.dev
@@ -89,8 +90,12 @@ final class YL_Captcha {
 
     /** Verifies the solved challenge from a submitted form. Replay-safe. */
     public function verify(array $post): bool {
-        $salt = (string) ($post['ylc_salt'] ?? ''); $num = (string) ($post['ylc_number'] ?? '');
-        $chal = (string) ($post['ylc_challenge'] ?? ''); $sig = (string) ($post['ylc_signature'] ?? '');
+        // No nonce here on purpose: the HMAC signature issued by this server is the integrity check
+        // (a nonce would break caching of the form page and is not needed for a single-use token).
+        // phpcs:disable WordPress.Security.NonceVerification.Missing
+        $f = static fn(string $k): string => isset($post[$k]) ? sanitize_text_field(wp_unslash((string) $post[$k])) : '';
+        $salt = $f('ylc_salt'); $num = $f('ylc_number'); $chal = $f('ylc_challenge'); $sig = $f('ylc_signature');
+        // phpcs:enable
         $exp  = (int) (explode('.', $salt)[1] ?? 0);
         if ($salt === '' || !ctype_digit($num) || $exp < time()) return false;
         if (!hash_equals(hash_hmac('sha256', $chal, $this->opt['secret']), $sig)) return false;
@@ -133,7 +138,8 @@ final class YL_Captcha {
         return $errors;
     }
     public function check_login($user, string $username, string $password) {
-        if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST' || $username === '') return $user; // only real submissions
+        $method = isset($_SERVER['REQUEST_METHOD']) ? sanitize_text_field(wp_unslash((string) $_SERVER['REQUEST_METHOD'])) : '';
+        if ($method !== 'POST' || $username === '') return $user; // only real submissions
         if (defined('XMLRPC_REQUEST') || defined('REST_REQUEST') || (defined('DOING_AJAX') && DOING_AJAX)) return $user;
         if (!$this->verify($_POST)) return new WP_Error('yl_captcha', __('<strong>Error:</strong> Captcha verification failed.', 'yl-captcha'));
         return $user;
