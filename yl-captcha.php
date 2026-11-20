@@ -53,7 +53,7 @@ final class YL_Captcha {
         }
         if ($this->opt['cf7'] && defined('WPCF7_VERSION')) {
             add_filter('wpcf7_form_elements', fn(string $html) => preg_replace('/(<input[^>]*type="submit")/i', $this->widget() . '$1', $html, 1));
-            add_filter('wpcf7_spam', fn(bool $spam) => $spam || !$this->verify($_POST), 5);
+            add_filter('wpcf7_spam', fn(bool $spam) => $spam || !$this->verify(), 5);
         }
         if ($this->opt['lostpassword']) {
             add_action('lostpassword_form', [$this, 'print_widget']);
@@ -89,7 +89,8 @@ final class YL_Captcha {
     }
 
     /** Verifies the solved challenge from a submitted form. Replay-safe. */
-    public function verify(array $post): bool {
+    public function verify(?array $post = null): bool {
+        $post ??= $_POST; // phpcs:ignore WordPress.Security.NonceVerification.Missing -- signed single-use token, see below
         // No nonce here on purpose: the HMAC signature issued by this server is the integrity check
         // (a nonce would break caching of the form page and is not needed for a single-use token).
         // phpcs:disable WordPress.Security.NonceVerification.Missing
@@ -113,7 +114,7 @@ final class YL_Captcha {
              . '<input type="hidden" name="ylc_salt"><input type="hidden" name="ylc_number"><input type="hidden" name="ylc_challenge"><input type="hidden" name="ylc_signature">'
              . '<span class="yl-captcha__status">' . esc_html__('Checking that you are not a bot …', 'yl-captcha') . '</span></div>';
     }
-    public function print_widget(): void { echo $this->widget(); }
+    public function print_widget(): void { echo wp_kses($this->widget(), ['div' => ['class' => [], 'data-endpoint' => [], 'aria-live' => []], 'input' => ['type' => [], 'name' => []], 'span' => ['class' => []]]); }
 
     public function assets(): void {
         wp_enqueue_script('yl-captcha', plugins_url('assets/yl-captcha.js', __FILE__), [], self::VERSION, ['in_footer' => true, 'strategy' => 'defer']);
@@ -128,24 +129,24 @@ final class YL_Captcha {
     /* ---------- Form hooks ---------- */
 
     public function check_comment(array $data): array {
-        if (!current_user_can('moderate_comments') && !$this->verify($_POST)) {
+        if (!current_user_can('moderate_comments') && !$this->verify()) {
             wp_die(esc_html__('Captcha verification failed. Please go back and try again.', 'yl-captcha'), esc_html__('Comment blocked', 'yl-captcha'), ['response' => 403, 'back_link' => true]);
         }
         return $data;
     }
     public function check_register(WP_Error $errors): WP_Error {
-        if (!$this->verify($_POST)) $errors->add('yl_captcha', __('<strong>Error:</strong> Captcha verification failed.', 'yl-captcha'));
+        if (!$this->verify()) $errors->add('yl_captcha', __('<strong>Error:</strong> Captcha verification failed.', 'yl-captcha'));
         return $errors;
     }
     public function check_login($user, string $username, string $password) {
         $method = isset($_SERVER['REQUEST_METHOD']) ? sanitize_text_field(wp_unslash((string) $_SERVER['REQUEST_METHOD'])) : '';
         if ($method !== 'POST' || $username === '') return $user; // only real submissions
         if (defined('XMLRPC_REQUEST') || defined('REST_REQUEST') || (defined('DOING_AJAX') && DOING_AJAX)) return $user;
-        if (!$this->verify($_POST)) return new WP_Error('yl_captcha', __('<strong>Error:</strong> Captcha verification failed.', 'yl-captcha'));
+        if (!$this->verify()) return new WP_Error('yl_captcha', __('<strong>Error:</strong> Captcha verification failed.', 'yl-captcha'));
         return $user;
     }
     public function check_lostpassword(WP_Error $errors): void {
-        if (!$this->verify($_POST)) $errors->add('yl_captcha', __('<strong>Error:</strong> Captcha verification failed.', 'yl-captcha'));
+        if (!$this->verify()) $errors->add('yl_captcha', __('<strong>Error:</strong> Captcha verification failed.', 'yl-captcha'));
     }
 
     /* ---------- Settings ---------- */

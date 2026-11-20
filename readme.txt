@@ -1,5 +1,5 @@
 === YL Captcha ===
-Contributors: ylwebdev
+Contributors: intranic
 Tags: captcha, spam, comments, gdpr, privacy, contact form 7
 Requires at least: 6.0
 Tested up to: 7.1
