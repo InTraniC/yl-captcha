@@ -5,7 +5,6 @@
  * Description:       Self-hosted proof-of-work captcha for comments, registration, login and Contact Form 7. No external service, no cookies, no tracking, GDPR-friendly.
  * Version:           1.0.0
  * Requires at least: 6.0
- * Tested up to:      7.1
  * Requires PHP:      8.0
  * Author:            Yannic Lange, YL Web Dev
  * Author URI:        https://yl-web.dev
